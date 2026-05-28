@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -13,6 +13,7 @@ import {
   Filter,
   X,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
@@ -146,7 +147,7 @@ function FilterDropdown({
   );
 }
 
-export default function JobsPage() {
+function JobsContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const initialLocation = searchParams.get("location") || "";
@@ -342,5 +343,27 @@ export default function JobsPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+function JobsLoadingFallback() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1 bg-[hsl(var(--muted))]/30">
+        <div className="flex h-96 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense fallback={<JobsLoadingFallback />}>
+      <JobsContent />
+    </Suspense>
   );
 }

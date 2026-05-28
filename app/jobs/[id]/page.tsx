@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import {
   MapPin,
   Briefcase,
-  Clock,
   IndianRupee,
   Building2,
   Calendar,

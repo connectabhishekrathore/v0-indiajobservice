@@ -9,8 +9,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "IndiaJobService - Find Your Dream Job in India",
-  description: "India's premier job portal connecting talented professionals with top employers. Search thousands of jobs across IT, Engineering, Finance, Healthcare and more.",
-  keywords: "jobs in India, job search, career, employment, IT jobs, engineering jobs, freshers jobs, experienced jobs",
+  description:
+    "India's premier job portal connecting talented professionals with top employers. Search thousands of jobs across IT, Engineering, Finance, Healthcare and more.",
+  keywords:
+    "jobs in India, job search, career, employment, IT jobs, engineering jobs, freshers jobs, experienced jobs",
 };
 
 export default function RootLayout({
