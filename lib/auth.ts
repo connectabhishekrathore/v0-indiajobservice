@@ -4,19 +4,16 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 // Regular client for auth operations
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Service role client for admin operations (can bypass RLS)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function signUpAdmin(email: string, password: string, name: string) {
   try {
     console.log("[v0] Starting signup for:", email)
     
-    // Sign up with Supabase Auth
+    // Sign up with Supabase Auth - this will trigger the database trigger
+    // which automatically creates an admin record
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -27,28 +24,22 @@ export async function signUpAdmin(email: string, password: string, name: string)
 
     console.log("[v0] Auth signup result:", { error: authError, userId: authData.user?.id })
 
-    if (authError) throw authError
-    if (!authData.user?.id) throw new Error('Failed to create user')
-
-    // Create admin profile in admins table using service role (bypasses RLS)
-    const { data: insertData, error: profileError } = await supabaseAdmin
-      .from('admins')
-      .insert([
-        {
-          id: authData.user.id,
-          email,
-          name
-        }
-      ])
-      .select()
-
-    console.log("[v0] Admin profile insert result:", { error: profileError, data: insertData })
-
-    if (profileError) {
-      // If admin profile fails, delete the user
-      console.error("[v0] Profile creation failed, cleaning up")
-      throw profileError
+    if (authError) {
+      console.error("[v0] Auth signup error:", authError.message)
+      throw authError
     }
+    
+    if (!authData.user?.id) {
+      throw new Error('Failed to create user - no user ID returned')
+    }
+
+    console.log("[v0] User created successfully:", authData.user.id)
+    
+    // The database trigger will automatically create the admin record
+    // We add a small delay to ensure the trigger has time to execute
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    console.log("[v0] Signup complete - admin record should be created by trigger")
 
     return { success: true, user: authData.user, message: 'Admin account created successfully!' }
   } catch (error) {
