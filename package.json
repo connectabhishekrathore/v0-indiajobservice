@@ -19,6 +19,7 @@
     "next": "^16.2.6",
     "pdfjs-dist": "^5.7.284",
     "postcss": "^8.5.15",
+    "razorpay": "^2.9.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0",

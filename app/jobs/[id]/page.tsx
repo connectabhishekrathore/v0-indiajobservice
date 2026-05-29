@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getVacancyWithResources } from '@/lib/public'
 import { hasUserPurchasedPDF } from '@/lib/payments'
+import RazorpayPaymentButton from '@/components/RazorpayPaymentButton'
 import { Vacancy, Resource, PDFUpload } from '@/types'
 
 interface JobDetailPageProps {
@@ -226,21 +227,31 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                   <h3 className="font-semibold text-foreground mb-3">Download PDFs</h3>
                   <div className="space-y-2">
                     {pdfs.map(pdf => (
-                      <div key={pdf.id} className="p-2 bg-background rounded border border-foreground/10 text-sm">
-                        <p className="text-foreground font-medium mb-2 truncate">{pdf.original_filename}</p>
+                      <div key={pdf.id} className="p-3 bg-background rounded border border-foreground/10">
+                        <p className="text-foreground font-medium mb-3 truncate text-sm">{pdf.original_filename}</p>
                         {pdf.purchased ? (
                           <a
                             href={pdf.file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary hover:underline"
+                            className="block w-full py-2 text-center bg-secondary text-secondary-foreground rounded text-sm hover:opacity-90 font-medium"
                           >
-                            Download →
+                            Download PDF
                           </a>
                         ) : (
-                          <button className="text-primary hover:underline">
-                            Buy for ₹20
-                          </button>
+                          <RazorpayPaymentButton
+                            amount={20}
+                            description={`PDF Download: ${pdf.original_filename}`}
+                            pdfId={pdf.id}
+                            onSuccess={() => {
+                              alert('Payment successful! You can now download the PDF.')
+                              window.location.reload()
+                            }}
+                            onError={(error) => {
+                              alert(`Payment failed: ${error}`)
+                            }}
+                            className="w-full"
+                          />
                         )}
                       </div>
                     ))}
