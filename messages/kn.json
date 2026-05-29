@@ -1,0 +1,46 @@
+{
+  "header": {
+    "home": "Home",
+    "latestJobs": "Latest Jobs",
+    "admitCard": "Admit Card",
+    "result": "Results",
+    "answerKey": "Answer Key",
+    "syllabus": "Syllabus",
+    "premium": "Premium",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "hero": {
+    "title": "Find Your Dream Government Job",
+    "subtitle": "Access latest notifications, admit cards, and results from India's top recruitment bodies",
+    "searchPlaceholder": "Search jobs by exam name or organization..."
+  },
+  "categories": {
+    "latestJobs": "Latest Jobs",
+    "admitCards": "Admit Cards",
+    "results": "Results",
+    "answerKeys": "Answer Keys",
+    "syllabus": "Syllabus"
+  },
+  "jobs": {
+    "posts": "Posts",
+    "lastDate": "Last Date",
+    "organization": "Organization",
+    "viewDetails": "View Details",
+    "applyNow": "Apply Now"
+  },
+  "premium": {
+    "title": "Unlock Premium Features",
+    "free": "Free",
+    "premium": "Premium",
+    "premiumPlus": "Premium Plus",
+    "features": "Features"
+  },
+  "footer": {
+    "about": "About Us",
+    "contact": "Contact",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "followUs": "Follow Us"
+  }
+}

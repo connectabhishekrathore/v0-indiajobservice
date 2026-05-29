@@ -406,7 +406,7 @@ export const MOCK_JOBS: Job[] = [
   {
     id: "9",
     title: "Indian Army Agniveer Recruitment 2025",
-    titleHindi: "भारतीय सेना अग्निवीर भर्ती 2025",
+    titleHindi: "भारतीय सेना ��ग्निवीर भर्ती 2025",
     organization: "Indian Army",
     organizationHindi: "भारतीय सेना",
     category: "latest-jobs",
@@ -552,3 +552,13 @@ export const SITE_STATS = {
   dailyUpdates: 50,
   successStories: 10000,
 };
+
+// Indian States
+export const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+  "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Puducherry"
+];

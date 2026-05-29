@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { mockJobs } from "@/lib/mock-data";
+import { MOCK_JOBS } from "@/lib/mock-data";
 import {
   Calendar,
   Building2,
@@ -35,7 +35,7 @@ export default function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const job = mockJobs.find((j) => j.id === id);
+  const job = MOCK_JOBS.find((j) => j.id === id);
 
   if (!job) {
     return (
@@ -105,7 +105,7 @@ export default function JobDetailPage({
                           HOT
                         </Badge>
                       )}
-                      {job.isNew && (
+                      {job.isHot && (
                         <Badge className="bg-green-500 hover:bg-green-600">
                           NEW
                         </Badge>
@@ -148,7 +148,7 @@ export default function JobDetailPage({
                     <IndianRupee className="h-5 w-5 text-green-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Salary</p>
-                      <p className="font-semibold">{job.salary}</p>
+                      <p className="font-semibold">₹{job.salaryMin.toLocaleString()} - ₹{job.salaryMax.toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -192,7 +192,7 @@ export default function JobDetailPage({
                         <p className="text-sm text-muted-foreground">
                           Application Start
                         </p>
-                        <p className="font-semibold">{job.applicationStartDate}</p>
+                        <p className="font-semibold">{job.importantDates.startDate}</p>
                       </div>
                     </div>
                   </div>
@@ -205,11 +205,11 @@ export default function JobDetailPage({
                         <p className="text-sm text-muted-foreground">
                           Last Date to Apply
                         </p>
-                        <p className="font-semibold">{job.lastDate}</p>
+                        <p className="font-semibold">{job.importantDates.lastDate}</p>
                       </div>
                     </div>
                   </div>
-                  {job.examDate && (
+                  {job.importantDates.examDate && (
                     <div className="flex items-center justify-between p-4 rounded-lg border bg-blue-500/5 border-blue-500/20">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
@@ -219,7 +219,7 @@ export default function JobDetailPage({
                           <p className="text-sm text-muted-foreground">
                             Exam Date
                           </p>
-                          <p className="font-semibold">{job.examDate}</p>
+                          <p className="font-semibold">{job.importantDates.examDate}</p>
                         </div>
                       </div>
                     </div>
@@ -233,7 +233,7 @@ export default function JobDetailPage({
                         <p className="text-sm text-muted-foreground">
                           Posted On
                         </p>
-                        <p className="font-semibold">{job.postedDate}</p>
+                        <p className="font-semibold">{job.createdAt}</p>
                       </div>
                     </div>
                   </div>
@@ -264,7 +264,7 @@ export default function JobDetailPage({
                       SC / ST / PH
                     </p>
                     <p className="text-2xl font-bold text-foreground">
-                      {job.applicationFee?.scSt || "Rs. 250"}
+                      {job.applicationFee?.sc_st || "Rs. 250"}
                     </p>
                   </div>
                   <div className="p-4 rounded-lg border text-center">
@@ -272,7 +272,7 @@ export default function JobDetailPage({
                       Female Candidates
                     </p>
                     <p className="text-2xl font-bold text-foreground">
-                      {job.applicationFee?.female || "Rs. 250"}
+                      {job.applicationFee?.women || "Rs. 0"}
                     </p>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export default function JobDetailPage({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary" />
-                  Age Limit (as on {job.lastDate})
+                  Age Limit (as on {job.importantDates.lastDate})
                 </CardTitle>
               </CardHeader>
               <CardContent>

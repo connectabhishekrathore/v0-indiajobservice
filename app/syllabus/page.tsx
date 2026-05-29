@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockJobs, indianStates } from "@/lib/mock-data";
+import { MOCK_JOBS, INDIAN_STATES } from "@/lib/mock-data";
 import {
   Search,
   FileText,
@@ -30,7 +30,7 @@ export default function SyllabusPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState("all");
 
-  const syllabusJobs = mockJobs.filter((job) => job.syllabusUrl);
+  const syllabusJobs = MOCK_JOBS;
 
   const filteredJobs = syllabusJobs.filter((job) => {
     const matchesSearch =
@@ -84,7 +84,7 @@ export default function SyllabusPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All States</SelectItem>
-                    {indianStates.map((state) => (
+                    {INDIAN_STATES.map((state) => (
                       <SelectItem key={state} value={state}>
                         {state}
                       </SelectItem>
