@@ -1,3 +1,5 @@
+'use server'
+
 import { supabase } from '@/lib/supabase'
 
 export async function signUpAdmin(email: string, password: string, name: string) {
