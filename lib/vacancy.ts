@@ -36,28 +36,54 @@ export async function updateVacancy(vacancyId: string, adminId: string, data: Pa
   }
 }
 
-export async function deleteVacancy(vacancyId: string, adminId: string, softDelete = true) {
+export async function deleteVacancy(vacancyId: string, adminId?: string, softDelete = true) {
   try {
+    let query = supabase
+      .from('vacancies')
+
     if (softDelete) {
-      const { data: vacancy, error } = await supabase
-        .from('vacancies')
+      query = query
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', vacancyId)
-        .eq('admin_id', adminId)
-        .select()
+      
+      if (adminId) {
+        query = query.eq('admin_id', adminId)
+      }
+
+      const { data: vacancy, error } = await query.select()
 
       if (error) throw error
       return { success: true, vacancy: vacancy?.[0] }
     } else {
-      const { error } = await supabase
-        .from('vacancies')
+      query = query
         .delete()
         .eq('id', vacancyId)
-        .eq('admin_id', adminId)
+      
+      if (adminId) {
+        query = query.eq('admin_id', adminId)
+      }
+
+      const { error } = await query
 
       if (error) throw error
       return { success: true }
     }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+}
+
+export async function togglePublishVacancy(vacancyId: string, published: boolean) {
+  try {
+    const { data: vacancy, error } = await supabase
+      .from('vacancies')
+      .update({ published })
+      .eq('id', vacancyId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return { success: true, vacancy }
   } catch (error) {
     return { success: false, error: (error as Error).message }
   }
