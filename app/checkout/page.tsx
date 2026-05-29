@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -154,39 +154,101 @@ function PaymentPage({ plan, onBack }: { plan: Plan; onBack: () => void }) {
   const platformFee = 3;
   const totalAmount = plan.price + platformFee;
 
-  const handleRazorpayPayment = () => {
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleRazorpayPayment = async () => {
+    if (!email) {
+      alert('Please enter your email address');
+      return;
+    }
+
     setIsProcessing(true);
-    
-    // Simulate Razorpay integration
-    const options = {
-      key: 'rzp_test_placeholder', // Replace with actual Razorpay key
-      amount: totalAmount * 100, // Amount in paise
-      currency: 'INR',
-      name: 'India Job Service',
-      description: plan.name,
-      prefill: {
-        email: email,
-      },
-      theme: {
-        color: '#1e40af',
-      },
-      handler: function (response: any) {
-        alert(`Payment successful! Order ID: ${response.razorpay_payment_id}`);
-        setIsProcessing(false);
-      },
-      modal: {
-        ondismiss: function () {
+    try {
+      const orderId = `order_${Date.now()}`;
+      
+      // Create order
+      const orderResponse = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: totalAmount,
+          orderId,
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
+      if (!razorpayKey) {
+        throw new Error('Razorpay key not configured');
+      }
+
+      const options = {
+        key: razorpayKey,
+        order_id: orderData.id,
+        amount: totalAmount * 100,
+        currency: 'INR',
+        name: 'India Job Service',
+        description: plan.name,
+        prefill: {
+          email,
+          contact: '',
+        },
+        notes: {
+          plan_id: plan.id,
+          plan_name: plan.name,
+        },
+        theme: {
+          color: '#1e40af',
+        },
+        handler: async (response: any) => {
+          // Verify payment
+          const verifyResponse = await fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          });
+
+          if (verifyResponse.ok) {
+            alert('✅ Payment successful! Your access has been activated.');
+            // Redirect to dashboard
+            window.location.href = '/dashboard';
+          } else {
+            alert('⚠️ Payment verification failed. Please contact support.');
+          }
           setIsProcessing(false);
         },
-      },
-    };
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          },
+        },
+      };
 
-    // In production, load Razorpay script and call:
-    // const razorpay = new (window as any).Razorpay(options);
-    // razorpay.open();
-    
-    alert('Razorpay payment gateway would be initiated here with amount: ₹' + totalAmount);
-    setIsProcessing(false);
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      console.error('[v0] Payment error:', error);
+      alert('❌ Payment failed. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   return (
