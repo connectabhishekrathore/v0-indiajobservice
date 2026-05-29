@@ -10,12 +10,25 @@ export default function AdminSignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
+
+    // Validation
+    if (!name.trim()) {
+      setError('Name is required')
+      return
+    }
+
+    if (!email.trim()) {
+      setError('Email is required')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -28,15 +41,24 @@ export default function AdminSignupPage() {
     }
 
     setLoading(true)
-    const result = await signUpAdmin(email, password, name)
+    try {
+      const result = await signUpAdmin(email, password, name)
+      console.log("[v0] Signup result:", result)
 
-    if (result.success) {
-      router.push('/admin/login?signup=success')
-    } else {
-      setError(result.error || 'Failed to sign up')
+      if (result.success) {
+        setSuccess('Account created successfully! Redirecting to login...')
+        setTimeout(() => {
+          router.push('/admin/login?signup=success')
+        }, 1500)
+      } else {
+        setError(result.error || 'Failed to sign up. Please try again.')
+      }
+    } catch (err) {
+      console.error("[v0] Signup error:", err)
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -49,70 +71,81 @@ export default function AdminSignupPage() {
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
-                Name
+                Name <span className="text-destructive">*</span>
               </label>
               <input
                 id="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loading}
+                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 required
               />
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                Email
+                Email <span className="text-destructive">*</span>
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loading}
+                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 required
               />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                Password
+                Password <span className="text-destructive">*</span>
               </label>
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loading}
+                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 required
               />
+              <p className="text-xs text-foreground/50 mt-1">Minimum 6 characters</p>
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-2">
-                Confirm Password
+                Confirm Password <span className="text-destructive">*</span>
               </label>
               <input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={loading}
+                className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 required
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="p-4 bg-secondary/10 border border-secondary/20 rounded-lg text-secondary text-sm">
+                {success}
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 disabled:opacity-50"
+              className="w-full py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {loading ? 'Creating account...' : 'Sign Up'}
             </button>

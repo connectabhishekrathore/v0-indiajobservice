@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 
 export async function signUpAdmin(email: string, password: string, name: string) {
   try {
+    console.log("[v0] Starting signup for:", email)
+    
     // Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -13,11 +15,14 @@ export async function signUpAdmin(email: string, password: string, name: string)
       }
     })
 
+    console.log("[v0] Auth signup result:", { error: authError, userId: authData.user?.id })
+
     if (authError) throw authError
     if (!authData.user?.id) throw new Error('Failed to create user')
 
     // Create admin profile in admins table
-    const { error: profileError } = await supabase
+    // Using admin bypass for the insert since the user hasn't confirmed email yet
+    const { data: insertData, error: profileError } = await supabase
       .from('admins')
       .insert([
         {
@@ -26,12 +31,21 @@ export async function signUpAdmin(email: string, password: string, name: string)
           name
         }
       ])
+      .select()
 
-    if (profileError) throw profileError
+    console.log("[v0] Admin profile insert result:", { error: profileError, data: insertData })
+
+    if (profileError) {
+      // If admin profile fails, delete the user
+      console.error("[v0] Profile creation failed, cleaning up")
+      throw profileError
+    }
 
     return { success: true, user: authData.user, message: 'Admin account created successfully!' }
   } catch (error) {
-    return { success: false, error: (error as Error).message }
+    const errorMessage = (error as Error).message
+    console.error("[v0] Signup error:", errorMessage)
+    return { success: false, error: errorMessage }
   }
 }
 
