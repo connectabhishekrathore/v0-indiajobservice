@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { signUpAdmin } from '@/lib/auth'
 
 export default function AdminSignupPage() {
@@ -12,7 +11,6 @@ export default function AdminSignupPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,16 +44,19 @@ export default function AdminSignupPage() {
       console.log("[v0] Signup result:", result)
 
       if (result.success) {
-        setSuccess('Account created successfully! Redirecting to login...')
-        setTimeout(() => {
-          router.push('/admin/login?signup=success')
-        }, 1500)
+        setSuccess('Account created successfully! You can now log in.')
+        setEmail('')
+        setPassword('')
+        setConfirmPassword('')
+        setName('')
+        // Do NOT redirect - let user see success message and click login themselves
       } else {
+        console.error("[v0] Signup failed with error:", result.error)
         setError(result.error || 'Failed to sign up. Please try again.')
       }
     } catch (err) {
-      console.error("[v0] Signup error:", err)
-      setError('An unexpected error occurred. Please try again.')
+      console.error("[v0] Signup exception:", err)
+      setError(`An unexpected error occurred: ${(err as Error).message}`)
     } finally {
       setLoading(false)
     }
@@ -138,7 +139,10 @@ export default function AdminSignupPage() {
 
             {success && (
               <div className="p-4 bg-secondary/10 border border-secondary/20 rounded-lg text-secondary text-sm">
-                {success}
+                <p className="mb-4">{success}</p>
+                <a href="/admin/login" className="inline-block px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:opacity-90">
+                  Go to Login
+                </a>
               </div>
             )}
 

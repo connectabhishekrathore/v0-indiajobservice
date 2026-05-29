@@ -1,6 +1,16 @@
 'use server'
 
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+
+// Regular client for auth operations
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Service role client for admin operations (can bypass RLS)
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function signUpAdmin(email: string, password: string, name: string) {
   try {
@@ -20,9 +30,8 @@ export async function signUpAdmin(email: string, password: string, name: string)
     if (authError) throw authError
     if (!authData.user?.id) throw new Error('Failed to create user')
 
-    // Create admin profile in admins table
-    // Using admin bypass for the insert since the user hasn't confirmed email yet
-    const { data: insertData, error: profileError } = await supabase
+    // Create admin profile in admins table using service role (bypasses RLS)
+    const { data: insertData, error: profileError } = await supabaseAdmin
       .from('admins')
       .insert([
         {
