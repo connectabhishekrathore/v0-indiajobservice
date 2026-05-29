@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-import axios from 'axios'
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,12 +76,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Log download for analytics
-    await supabase.from('user_searches').insert({
-      search_query: `pdf_download_${pdfId}`,
-      results_count: 1
-    }).catch(() => {
+    try {
+      await supabase.from('user_searches').insert({
+        search_query: `pdf_download_${pdfId}`,
+        results_count: 1
+      })
+    } catch {
       // Analytics failure shouldn't block download
-    })
+    }
 
     return NextResponse.json({
       success: true,

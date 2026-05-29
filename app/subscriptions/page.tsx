@@ -7,16 +7,12 @@ import { supabase } from '@/lib/supabase'
 import { Subscription } from '@/types'
 
 export default function SubscriptionsPage() {
-  const [userEmail, setUserEmail] = useState('')
   const [activeSubscription, setActiveSubscription] = useState<Subscription | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const checkSubscription = async () => {
       const email = localStorage.getItem('userEmail')
       if (email) {
-        setUserEmail(email)
-
         const { data: subscription } = await supabase
           .from('subscriptions')
           .select('*')
@@ -29,7 +25,6 @@ export default function SubscriptionsPage() {
           setActiveSubscription(subscription)
         }
       }
-      setLoading(false)
     }
 
     checkSubscription()

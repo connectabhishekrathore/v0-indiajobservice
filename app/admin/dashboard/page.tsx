@@ -11,7 +11,6 @@ import { Vacancy } from '@/types'
 export default function AdminDashboard() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [loading, setLoading] = useState(true)
-  const [adminId, setAdminId] = useState<string | null>(null)
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const router = useRouter()
@@ -37,7 +36,6 @@ export default function AdminDashboard() {
         return
       }
 
-      setAdminId(session.user.id)
       setAdminEmail(adminData.email)
 
       const result = await getAdminVacancies(session.user.id)

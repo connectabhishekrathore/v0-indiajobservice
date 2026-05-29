@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import { getVacancyWithResources } from '@/lib/public'
 import { hasUserPurchasedPDF } from '@/lib/payments'
 import RazorpayPaymentButton from '@/components/RazorpayPaymentButton'
@@ -18,7 +17,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [resources, setResources] = useState<Resource[]>([])
   const [pdfs, setPdfs] = useState<(PDFUpload & { purchased?: boolean })[]>([])
   const [loading, setLoading] = useState(true)
-  const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
     params.then(p => setParamId(p.id))
@@ -37,7 +35,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
         // Check purchase status for each PDF
         const email = localStorage.getItem('userEmail') || ''
-        setUserEmail(email)
 
         if (result.pdfs) {
           const pdfWithStatus = await Promise.all(

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       orderId: order.id,
-      amount: order.amount / 100,
+      amount: (order.amount as number) / 100,
       currency: order.currency,
       receiptId: order.receipt
     })
