@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import { Vacancy } from '@/types'
 
 export async function getPublishedVacancies(filters?: {
   state?: string

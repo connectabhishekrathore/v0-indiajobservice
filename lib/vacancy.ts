@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { Vacancy, ExtractedPDFData } from '@/types'
+import { Vacancy } from '@/types'
 
 export async function createVacancy(adminId: string, data: Partial<Vacancy>) {
   try {
@@ -36,38 +36,23 @@ export async function updateVacancy(vacancyId: string, adminId: string, data: Pa
   }
 }
 
-export async function deleteVacancy(vacancyId: string, adminId?: string, softDelete = true) {
+export async function deleteVacancy(vacancyId: string, adminId?: string) {
   try {
+    const update: Record<string, any> = { deleted_at: new Date().toISOString() }
+    
     let query = supabase
       .from('vacancies')
-
-    if (softDelete) {
-      query = query
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', vacancyId)
-      
-      if (adminId) {
-        query = query.eq('admin_id', adminId)
-      }
-
-      const { data: vacancy, error } = await query.select()
-
-      if (error) throw error
-      return { success: true, vacancy: vacancy?.[0] }
-    } else {
-      query = query
-        .delete()
-        .eq('id', vacancyId)
-      
-      if (adminId) {
-        query = query.eq('admin_id', adminId)
-      }
-
-      const { error } = await query
-
-      if (error) throw error
-      return { success: true }
+      .update(update)
+      .eq('id', vacancyId)
+    
+    if (adminId) {
+      query = query.eq('admin_id', adminId)
     }
+
+    const { data: vacancy, error } = await query.select()
+
+    if (error) throw error
+    return { success: true, vacancy: vacancy?.[0] }
   } catch (error) {
     return { success: false, error: (error as Error).message }
   }

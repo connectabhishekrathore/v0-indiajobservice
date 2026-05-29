@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import { PDFPurchase, Subscription } from '@/types'
 
 export async function createPaymentOrder(
   amount: number,
@@ -18,8 +17,7 @@ export async function createPaymentOrder(
 export async function verifyPaymentSignature(
   razorpayOrderId: string,
   razorpayPaymentId: string,
-  razorpaySignature: string,
-  secret: string
+  razorpaySignature: string
 ) {
   // Verify signature with Razorpay in production
   // For now, return success if fields exist

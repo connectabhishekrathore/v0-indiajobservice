@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { PDFUpload, PDFPurchase, Subscription } from '@/types'
+import { PDFUpload } from '@/types'
 
 export async function uploadPDFToSupabase(
   file: File,
@@ -11,7 +11,7 @@ export async function uploadPDFToSupabase(
     const filepath = `pdfs/${filename}`
 
     // Upload file to Supabase Storage
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('pdf_uploads')
       .upload(filepath, file, {
         cacheControl: '3600',

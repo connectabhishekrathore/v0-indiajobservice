@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { PDFUpload, ExtractedPDFData } from '@/types'
+import { ExtractedPDFData } from '@/types'
 
 export async function uploadPDF(file: File, vacancyId: string): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
@@ -39,7 +39,7 @@ export async function extractPDFText(file: File): Promise<string> {
   }
 }
 
-export async function extractVacancyDataFromPDF(pdfText: string): Promise<ExtractedPDFData> {
+export async function extractVacancyDataFromPDF(): Promise<ExtractedPDFData> {
   try {
     // Call Claude or Grok API to extract structured data
     // This is a placeholder - implement with actual AI extraction
