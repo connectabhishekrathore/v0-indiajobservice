@@ -9,18 +9,19 @@ export async function signUpAdmin(email: string, password: string, name: string)
       email,
       password,
       options: {
-        data: { name }
+        data: { name, is_admin: true }
       }
     })
 
     if (authError) throw authError
+    if (!authData.user?.id) throw new Error('Failed to create user')
 
-    // Create admin profile
+    // Create admin profile in admins table
     const { error: profileError } = await supabase
       .from('admins')
       .insert([
         {
-          id: authData.user?.id,
+          id: authData.user.id,
           email,
           name
         }
@@ -28,7 +29,7 @@ export async function signUpAdmin(email: string, password: string, name: string)
 
     if (profileError) throw profileError
 
-    return { success: true, user: authData.user }
+    return { success: true, user: authData.user, message: 'Admin account created successfully!' }
   } catch (error) {
     return { success: false, error: (error as Error).message }
   }
@@ -42,12 +43,13 @@ export async function signInAdmin(email: string, password: string) {
     })
 
     if (error) throw error
+    if (!data.user?.id) throw new Error('No user returned')
 
     // Verify user is an admin
     const { data: adminData, error: adminError } = await supabase
       .from('admins')
-      .select('id, email')
-      .eq('id', data.user?.id)
+      .select('id, email, name')
+      .eq('id', data.user.id)
       .single()
 
     if (adminError || !adminData) {
@@ -56,7 +58,13 @@ export async function signInAdmin(email: string, password: string) {
       throw new Error('Only admins can access this panel')
     }
 
-    return { success: true, user: data.user, session: data.session, isAdmin: true }
+    return { 
+      success: true, 
+      user: data.user, 
+      session: data.session, 
+      isAdmin: true,
+      adminName: adminData.name
+    }
   } catch (error) {
     return { success: false, error: (error as Error).message, isAdmin: false }
   }
@@ -84,13 +92,13 @@ export async function getAdminSession() {
     // Verify admin status
     const { data: adminData, error: adminError } = await supabase
       .from('admins')
-      .select('id')
+      .select('id, name, email')
       .eq('id', data.session.user.id)
       .single()
 
     const isAdmin = !adminError && !!adminData
 
-    return { session: data.session, isAdmin }
+    return { session: data.session, isAdmin, admin: adminData }
   } catch (error) {
     return { session: null, isAdmin: false, error: (error as Error).message }
   }

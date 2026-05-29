@@ -5,45 +5,66 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { signOutAdmin } from '@/lib/auth'
-import { getAdminVacancies, deleteVacancy, togglePublishVacancy } from '@/lib/vacancy'
 import { Vacancy } from '@/types'
 
 export default function AdminDashboard() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [loading, setLoading] = useState(true)
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
+  const [adminName, setAdminName] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [stats, setStats] = useState({ total: 0, published: 0, draft: 0 })
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
 
-      if (!session?.user?.id) {
-        router.push('/admin/login')
-        return
+        if (!session?.user?.id) {
+          router.push('/admin/login')
+          return
+        }
+
+        // Verify admin status
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('id, email, name')
+          .eq('id', session.user.id)
+          .single()
+
+        if (adminError || !adminData) {
+          await supabase.auth.signOut()
+          router.push('/admin/login')
+          return
+        }
+
+        setAdminEmail(adminData.email)
+        setAdminName(adminData.name)
+
+        // Fetch admin's vacancies
+        const { data: vacanciesData, error: vacanciesError } = await supabase
+          .from('vacancies')
+          .select('*')
+          .eq('admin_id', adminData.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+
+        if (!vacanciesError && vacanciesData) {
+          setVacancies(vacanciesData)
+          const published = vacanciesData.filter((v: Vacancy) => v.published).length
+          setStats({
+            total: vacanciesData.length,
+            published,
+            draft: vacanciesData.length - published
+          })
+        }
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setLoading(false)
       }
-
-      // Verify admin status
-      const { data: adminData, error: adminError } = await supabase
-        .from('admins')
-        .select('id, email')
-        .eq('id', session.user.id)
-        .single()
-
-      if (adminError || !adminData) {
-        router.push('/admin/login')
-        return
-      }
-
-      setAdminEmail(adminData.email)
-
-      const result = await getAdminVacancies(session.user.id)
-      if (result.success) {
-        setVacancies(result.vacancies)
-      }
-
-      setLoading(false)
     }
 
     checkAuth()
@@ -53,25 +74,40 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to delete this vacancy?')) return
 
     setDeleting(vacancyId)
-    const result = await deleteVacancy(vacancyId)
+    try {
+      const { error } = await supabase
+        .from('vacancies')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', vacancyId)
 
-    if (result.success) {
+      if (error) throw error
       setVacancies(vacancies.filter(v => v.id !== vacancyId))
-    } else {
-      alert('Error deleting vacancy: ' + result.error)
+      setStats(prev => ({ ...prev, total: prev.total - 1, draft: prev.draft - 1 }))
+    } catch (err) {
+      alert('Error deleting vacancy: ' + (err as Error).message)
+    } finally {
+      setDeleting(null)
     }
-    setDeleting(null)
   }
 
   const handleTogglePublish = async (vacancy: Vacancy) => {
-    const result = await togglePublishVacancy(vacancy.id, !vacancy.published)
+    try {
+      const { error } = await supabase
+        .from('vacancies')
+        .update({ published: !vacancy.published })
+        .eq('id', vacancy.id)
 
-    if (result.success) {
+      if (error) throw error
       setVacancies(vacancies.map(v =>
         v.id === vacancy.id ? { ...v, published: !v.published } : v
       ))
-    } else {
-      alert('Error updating vacancy: ' + result.error)
+      setStats(prev => ({
+        ...prev,
+        published: vacancy.published ? prev.published - 1 : prev.published + 1,
+        draft: vacancy.published ? prev.draft + 1 : prev.draft - 1
+      }))
+    } catch (err) {
+      alert('Error updating vacancy: ' + (err as Error).message)
     }
   }
 
@@ -93,6 +129,22 @@ export default function AdminDashboard() {
     )
   }
 
+  if (error) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Error: {error}</p>
+          <button
+            onClick={() => router.push('/admin/login')}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
+          >
+            Back to Login
+          </button>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
@@ -100,7 +152,7 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-            <p className="text-foreground/60 text-sm">{adminEmail}</p>
+            <p className="text-foreground/60 text-sm">{adminName} • {adminEmail}</p>
           </div>
           <button
             onClick={handleLogout}
@@ -117,27 +169,35 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-6">
             <p className="text-foreground/60 text-sm mb-2">Total Vacancies</p>
-            <p className="text-3xl font-bold text-foreground">{vacancies.length}</p>
+            <p className="text-3xl font-bold text-foreground">{stats.total}</p>
           </div>
           <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-6">
             <p className="text-foreground/60 text-sm mb-2">Published</p>
-            <p className="text-3xl font-bold text-primary">{vacancies.filter(v => v.published).length}</p>
+            <p className="text-3xl font-bold text-secondary">{stats.published}</p>
           </div>
           <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-6">
             <p className="text-foreground/60 text-sm mb-2">Drafts</p>
-            <p className="text-3xl font-bold text-foreground/60">{vacancies.filter(v => !v.published).length}</p>
+            <p className="text-3xl font-bold text-foreground/60">{stats.draft}</p>
           </div>
         </div>
 
         {/* Actions Bar */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <h2 className="text-2xl font-bold text-foreground">Vacancies</h2>
-          <Link
-            href="/admin/vacancies/new"
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 font-medium transition-opacity"
-          >
-            + Add Vacancy
-          </Link>
+          <div className="flex gap-2 flex-wrap">
+            <Link
+              href="/admin/vacancies/new"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 font-medium transition-opacity"
+            >
+              + Add Vacancy
+            </Link>
+            <Link
+              href="/admin/pdf-upload"
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:opacity-90 font-medium transition-opacity"
+            >
+              Upload PDF
+            </Link>
+          </div>
         </div>
 
         {/* Vacancies List */}
@@ -152,7 +212,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-4">
             {vacancies.map((vacancy) => (
               <div
                 key={vacancy.id}
@@ -162,7 +222,7 @@ export default function AdminDashboard() {
                   <div className="flex-1">
                     <h3 className="text-xl font-bold text-foreground mb-1">{vacancy.job_title}</h3>
                     <p className="text-foreground/60 text-sm mb-2">{vacancy.company_name} • {vacancy.location}</p>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
                       <span className="text-foreground/60">
                         State: <span className="font-medium text-foreground">{vacancy.state}</span>
                       </span>
@@ -171,19 +231,6 @@ export default function AdminDashboard() {
                           Salary: <span className="font-medium text-foreground">
                             ₹{vacancy.salary_range_min.toLocaleString()} - ₹{vacancy.salary_range_max?.toLocaleString()}
                           </span>
-                        </span>
-                      )}
-                      {vacancy.application_link && (
-                        <span className="text-foreground/60">
-                          <span className="font-medium text-primary">Apply Link: </span>
-                          <a 
-                            href={vacancy.application_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            External
-                          </a>
                         </span>
                       )}
                     </div>

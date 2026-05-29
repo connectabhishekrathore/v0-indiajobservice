@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { createVacancy } from '@/lib/vacancy'
-import { uploadPDF } from '@/lib/pdf'
 import { Vacancy } from '@/types'
 
 export default function NewVacancyPage() {
+  const [adminId, setAdminId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<Vacancy>>({
     job_title: '',
     company_name: '',
@@ -30,10 +30,44 @@ export default function NewVacancyPage() {
     }
   })
 
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (!session?.user?.id) {
+          router.push('/admin/login')
+          return
+        }
+
+        // Verify admin status
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('id', session.user.id)
+          .single()
+
+        if (adminError || !adminData) {
+          await supabase.auth.signOut()
+          router.push('/admin/login')
+          return
+        }
+
+        setAdminId(adminData.id)
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setPageLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [router])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -43,72 +77,71 @@ export default function NewVacancyPage() {
     }))
   }
 
-  const handleEligibilityChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      eligibility: {
-        ...prev.eligibility,
-        [name]: value
-      } as any
-    }))
-  }
-
-  const handleSelectionProcessChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      selection_process: {
-        ...prev.selection_process,
-        [name]: value
-      } as any
-    }))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      if (!adminId) throw new Error('Admin not authenticated')
 
-      if (!session?.user?.id) {
-        router.push('/admin/login')
-        return
+      const deadlineDate = new Date(formData.application_deadline!)
+      if (isNaN(deadlineDate.getTime())) {
+        throw new Error('Invalid deadline date')
       }
 
-      // Create vacancy
-      const result = await createVacancy(session.user.id, {
-        ...formData,
-        application_deadline: new Date(formData.application_deadline!).toISOString()
-      })
+      const { error: insertError } = await supabase
+        .from('vacancies')
+        .insert([
+          {
+            admin_id: adminId,
+            job_title: formData.job_title,
+            company_name: formData.company_name,
+            location: formData.location,
+            state: formData.state,
+            salary_range_min: formData.salary_range_min,
+            salary_range_max: formData.salary_range_max,
+            eligibility: formData.eligibility,
+            selection_process: formData.selection_process,
+            application_deadline: deadlineDate.toISOString(),
+            application_link: formData.application_link,
+            description: formData.description,
+            published: false
+          }
+        ])
 
-      if (!result.success) throw new Error(result.error)
-
-      const vacancyId = result.vacancy?.id
-
-      // Upload PDF if provided
-      if (pdfFile && vacancyId) {
-        const pdfResult = await uploadPDF(pdfFile, vacancyId)
-        if (!pdfResult.success) {
-          console.warn('PDF upload failed:', pdfResult.error)
-        }
-      }
+      if (insertError) throw insertError
 
       router.push('/admin/dashboard')
     } catch (err) {
       setError((err as Error).message)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    setLoading(false)
+  if (pageLoading) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-foreground/20 border-t-primary mx-auto mb-4 animate-spin" />
+          <p className="text-foreground/60">Loading...</p>
+        </div>
+      </main>
+    )
   }
 
   return (
     <main className="min-h-screen bg-background">
       <header className="bg-foreground/5 border-b border-foreground/10">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-foreground">Create New Vacancy</h1>
+          <Link
+            href="/admin/dashboard"
+            className="px-4 py-2 bg-foreground/10 text-foreground rounded-lg hover:bg-foreground/20 font-medium"
+          >
+            Back
+          </Link>
         </div>
       </header>
 
@@ -126,7 +159,7 @@ export default function NewVacancyPage() {
             <div className="space-y-4">
               <div>
                 <label htmlFor="job_title" className="block text-sm font-medium text-foreground mb-2">
-                  Job Title *
+                  Job Title <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="job_title"
@@ -141,7 +174,7 @@ export default function NewVacancyPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="company_name" className="block text-sm font-medium text-foreground mb-2">
-                    Company Name *
+                    Company Name <span className="text-destructive">*</span>
                   </label>
                   <input
                     id="company_name"
@@ -154,7 +187,7 @@ export default function NewVacancyPage() {
                 </div>
                 <div>
                   <label htmlFor="state" className="block text-sm font-medium text-foreground mb-2">
-                    State *
+                    State <span className="text-destructive">*</span>
                   </label>
                   <select
                     id="state"
@@ -199,7 +232,7 @@ export default function NewVacancyPage() {
 
               <div>
                 <label htmlFor="location" className="block text-sm font-medium text-foreground mb-2">
-                  Location/City *
+                  Location/City <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="location"
@@ -214,7 +247,7 @@ export default function NewVacancyPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="salary_range_min" className="block text-sm font-medium text-foreground mb-2">
-                    Salary Range Min (₹)
+                    Min Salary (₹)
                   </label>
                   <input
                     id="salary_range_min"
@@ -227,7 +260,7 @@ export default function NewVacancyPage() {
                 </div>
                 <div>
                   <label htmlFor="salary_range_max" className="block text-sm font-medium text-foreground mb-2">
-                    Salary Range Max (₹)
+                    Max Salary (₹)
                   </label>
                   <input
                     id="salary_range_max"
@@ -242,105 +275,13 @@ export default function NewVacancyPage() {
             </div>
           </section>
 
-          {/* Eligibility */}
+          {/* Application Details */}
           <section className="bg-foreground/5 rounded-lg border border-foreground/10 p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Eligibility</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="age_limit" className="block text-sm font-medium text-foreground mb-2">
-                  Age Limit
-                </label>
-                <input
-                  id="age_limit"
-                  name="age_limit"
-                  value={(formData.eligibility as any)?.age_limit || ''}
-                  onChange={handleEligibilityChange}
-                  className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., 18-35 years"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="experience_required" className="block text-sm font-medium text-foreground mb-2">
-                  Experience Required
-                </label>
-                <input
-                  id="experience_required"
-                  name="experience_required"
-                  value={(formData.eligibility as any)?.experience_required || ''}
-                  onChange={handleEligibilityChange}
-                  className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., 2 years"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="qualifications" className="block text-sm font-medium text-foreground mb-2">
-                  Qualifications
-                </label>
-                <textarea
-                  id="qualifications"
-                  name="qualifications"
-                  value={(formData.eligibility as any)?.qualifications?.join(', ') || ''}
-                  onChange={(e) => {
-                    const quals = e.target.value.split(',').map(q => q.trim()).filter(q => q)
-                    setFormData(prev => ({
-                      ...prev,
-                      eligibility: {
-                        ...prev.eligibility,
-                        qualifications: quals
-                      } as any
-                    }))
-                  }}
-                  className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                  placeholder="Enter qualifications separated by comma"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Selection Process */}
-          <section className="bg-foreground/5 rounded-lg border border-foreground/10 p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Selection Process</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="exam_details" className="block text-sm font-medium text-foreground mb-2">
-                  Exam Details
-                </label>
-                <textarea
-                  id="exam_details"
-                  name="exam_details"
-                  value={(formData.selection_process as any)?.exam_details || ''}
-                  onChange={handleSelectionProcessChange}
-                  className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="interview_details" className="block text-sm font-medium text-foreground mb-2">
-                  Interview Details
-                </label>
-                <textarea
-                  id="interview_details"
-                  name="interview_details"
-                  value={(formData.selection_process as any)?.interview_details || ''}
-                  onChange={handleSelectionProcessChange}
-                  className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Application & PDF */}
-          <section className="bg-foreground/5 rounded-lg border border-foreground/10 p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Application & Documents</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">Application Details</h2>
             <div className="space-y-4">
               <div>
                 <label htmlFor="application_deadline" className="block text-sm font-medium text-foreground mb-2">
-                  Application Deadline *
+                  Deadline <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="application_deadline"
@@ -355,7 +296,7 @@ export default function NewVacancyPage() {
 
               <div>
                 <label htmlFor="application_link" className="block text-sm font-medium text-foreground mb-2">
-                  Application Link *
+                  Apply Link <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="application_link"
@@ -380,19 +321,7 @@ export default function NewVacancyPage() {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   rows={4}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="pdf" className="block text-sm font-medium text-foreground mb-2">
-                  Upload Vacancy PDF (optional)
-                </label>
-                <input
-                  id="pdf"
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                  className="w-full px-4 py-2 bg-background border border-foreground/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Full job description"
                 />
               </div>
             </div>
@@ -403,16 +332,16 @@ export default function NewVacancyPage() {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 font-medium"
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 font-medium transition-opacity"
             >
               {loading ? 'Creating...' : 'Create Vacancy'}
             </button>
-            <a
+            <Link
               href="/admin/dashboard"
-              className="px-6 py-2 bg-foreground/10 text-foreground rounded-lg hover:opacity-80"
+              className="px-6 py-3 bg-foreground/10 text-foreground rounded-lg hover:bg-foreground/20 font-medium transition-colors"
             >
               Cancel
-            </a>
+            </Link>
           </div>
         </form>
       </div>
